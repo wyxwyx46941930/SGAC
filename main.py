@@ -5,7 +5,6 @@ from torch_geometric.loader import DataLoader
 import torch.nn.functional as F
 from tqdm import tqdm
 from network import SGAC
-import os
 from gnn import GNN
 import random
 import pickle
@@ -21,26 +20,15 @@ def test(model, loader):
         for data in loader:
             data = data.to(config['device'])
             output = model.embed(data)
-            
-            # Get predicted probabilities and predicted labels
-            probs = F.softmax(output, dim=-1)[:, 1]  # Probability of positive class
+            probs = F.softmax(output, dim=-1)[:, 1]  
             preds = F.log_softmax(output, dim=-1).max(1)[1]
-            
-            # Collect predictions and true labels
             all_preds.extend(probs.cpu().numpy())
             all_labels.extend(data.y.cpu().numpy())
     
-    # Convert predictions and labels to numpy arrays
     all_preds = np.array(all_preds)
     all_labels = np.array(all_labels)
-    
-    # Calculate F1 Score
-    f1 = f1_score(all_labels, all_preds.round())  # Round probabilities to 0 or 1 for binary classification
-    
-    # Calculate ROC-AUC
+    f1 = f1_score(all_labels, all_preds.round())  
     roc_auc = roc_auc_score(all_labels, all_preds)
-    
-    # Calculate Precision-Recall AUC
     precision, recall, _ = precision_recall_curve(all_labels, all_preds)
     pr_auc = auc(recall, precision)
     
@@ -70,7 +58,6 @@ def train(config,args):
             inputs_train, inputs_test = inputs_train.to(config['device']), inputs_test.to(config['device'])
             classifier_loss, label_loss, contrastive_loss = model(inputs_train, inputs_test, device=config['device'])
             total_loss = classifier_loss + args.label_loss * label_loss + args.contrastive_loss * contrastive_loss
-            # total_loss = args.label_loss * label_loss + args.contrastive_loss * contrastive_loss
             total_loss.backward()
             optimizer.step()
         val_f1, _, _ = test(model, dset_loaders["val"])
@@ -79,9 +66,6 @@ def train(config,args):
             best_val = val_f1 
             best_model = model.state_dict()
             best_data = [test_f1, test_auc, test_pr_auc]
-            print(test_f1)
-    # save_path = "model.pth"
-    # torch.save(best_model, save_path)
     return best_data
 
 if __name__ == "__main__":

@@ -1,6 +1,5 @@
 import torch
 from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_pool
-import torch.nn.functional as F
 from conv import GNN_node
 
 class GNN(torch.nn.Module):

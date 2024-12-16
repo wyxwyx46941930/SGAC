@@ -3,8 +3,7 @@ from torch_geometric.nn import MessagePassing
 import torch.nn.functional as F
 from torch_geometric.utils import degree
 from torch import nn
-from torch_geometric.utils import softmax
-from torch_geometric.nn.inits import glorot, zeros
+
 class GINConv(MessagePassing):
     def __init__(self, emb_dim):
         super(GINConv, self).__init__(aggr = "add")
@@ -61,47 +60,33 @@ class GCNConv(MessagePassing):
     def update(self, aggr_out):
         return aggr_out
 
-import torch
-import torch.nn.functional as F
-from torch_geometric.nn import MessagePassing
-from torch_geometric.utils import degree
-
 class SAGEConv(MessagePassing):
     def __init__(self, emb_dim, aggr="mean"):
         super(SAGEConv, self).__init__(aggr=aggr)
 
         self.linear = torch.nn.Linear(emb_dim, emb_dim)
         self.neigh_linear = torch.nn.Linear(emb_dim, emb_dim)
-        self.edge_encoder = torch.nn.Linear(3, emb_dim)  # Assuming edge_attr has dimension 3
+        self.edge_encoder = torch.nn.Linear(3, emb_dim)  
         self.root_emb = torch.nn.Embedding(1, emb_dim)
 
     def forward(self, x, edge_index, edge_attr=None):
-        # Linearly transform node features
         x = self.linear(x)
-
-        # Encode edge attributes if available
         if edge_attr is not None:
             edge_embedding = self.edge_encoder(edge_attr)
-
-        # Propagate messages
         if edge_attr is not None:
             out = self.propagate(edge_index, x=x, edge_attr=edge_embedding)
         else:
             out = self.propagate(edge_index, x=x)
-
-        # Apply linear transformation to the concatenated embeddings
         out = self.neigh_linear(out) + F.relu(x + self.root_emb.weight)
         
         return out
 
     def message(self, x_j, edge_attr=None):
-        # Apply edge embedding if edge_attr is provided
         if edge_attr is not None:
             return F.relu(x_j + edge_attr)
         return F.relu(x_j)
 
     def update(self, aggr_out):
-        # Apply the neighbor linear transformation and return
         return aggr_out
 
 class GNN_node(torch.nn.Module):
@@ -135,11 +120,8 @@ class GNN_node(torch.nn.Module):
         h_list = [tmp]
 
         for layer in range(self.num_layer):
-
             h = self.convs[layer](h_list[layer], edge_index, edge_attr=None)
             h = self.batch_norms[layer](h)
-
-
             if layer == self.num_layer - 1:
                 h = F.dropout(h, self.drop_ratio, training = self.training)
             else:

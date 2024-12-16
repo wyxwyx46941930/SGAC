@@ -1,13 +1,8 @@
-import numpy as np
-import math
-from torch_scatter import scatter
 import torch
 from torch import nn
 import torch.nn.functional as F
-import copy
 from functools import wraps
 from sklearn.cluster import KMeans
-from sklearn.metrics import pairwise_distances_argmin_min
 
 class MLP(nn.Module):
     def __init__(self, dim, hidden_size, projection_size):
@@ -16,7 +11,6 @@ class MLP(nn.Module):
             nn.Linear(dim, hidden_size),
             nn.BatchNorm1d(hidden_size),
             nn.ReLU(inplace=True),
-            #nn.PReLU(),
             nn.Linear(hidden_size, projection_size)
         )
 
