@@ -99,7 +99,7 @@ if __name__ == "__main__":
     config = {}
     # read data
     config['num_class'] = args.num_class = 2
-    with open('protein_data.pkl', 'rb') as f:
+    with open('data/protein_data.pkl', 'rb') as f:
         protein_data = pickle.load(f)
     data_list = [convert_to_tudata(protein_name, protein_data) for protein_name, protein_data in protein_data.items()]
     random.shuffle(data_list)

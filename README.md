@@ -17,9 +17,7 @@ conda activate py38
 
 ### 2. Download Data
 
-Download the dataset from the provided [Google Drive link](https://drive.google.com/file/d/1znoNWTuX1rwRN2_OOz6KTYxcnSRTJc43/view?usp=sharing) and place it in the appropriate directory.
-
-Ensure the data is located in the `data/` folder as expected by the code.
+Download the dataset from the provided [Google Drive link](https://drive.google.com/file/d/1znoNWTuX1rwRN2_OOz6KTYxcnSRTJc43/view?usp=sharing) and place it in the `/data` directory.
 
 ### 3. Run the Code
 
