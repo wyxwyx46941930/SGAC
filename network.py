@@ -130,15 +130,12 @@ class SGAC(nn.Module):
             self.predictor(self.online_projector(test_features))
         )
         pseudo_label_loss = self.compute_pseudo_label_loss(scaled_test_outputs, test_vice_features, device)
-
-        combined_features = torch.cat([train_features, test_features.detach()], dim=0)
-        combined_labels = torch.cat([train_batch.y, -torch.ones_like(test_batch.y)], dim=0)  # Test data: -1
-        contrastive_loss = self.contrastive_weight * self.contrastive_loss_fn(combined_features, combined_labels)
+        contrastive_loss = self.contrastive_weight * self.contrastive_loss_fn(train_features, train_batch.y)
 
         return classifier_loss, pseudo_label_loss, contrastive_loss
 
     def embed(self, test):
-        features_test, _ = self.online_encoder(test)
+        _, features_test = self.online_encoder(test)
         online_pred_two = self.online_projector(features_test)
         outputs_test = self.predictor(online_pred_two)
         return outputs_test.detach()
