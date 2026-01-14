@@ -28,3 +28,15 @@ Execute the `main.py` script to train and evaluate the model:
 ```
 python main.py --gpu 0 --gnn gin --emb_dim 256   
 ```
+
+#### Citation
+
+```bibtex
+@article{wang2024sgac,
+  title={SGAC: A Graph Neural Network Framework for Imbalanced and Structure-Aware AMP Classification},
+  author={Wang, Yingxu and Liang, Victor and Yin, Nan and Liu, Siwei and Segal, Eran},
+  journal={arXiv preprint arXiv:2412.16276},
+  year={2024}
+}
+```
+
