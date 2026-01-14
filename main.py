@@ -4,12 +4,12 @@ import torch.optim as optim
 from torch_geometric.loader import DataLoader
 import torch.nn.functional as F
 from tqdm import tqdm
-from network import SGAC
+from network import DEAL
 from gnn import GNN
 import random
 import pickle
 from data import ProteinTUDataset, convert_to_tudata
-from sklearn.metrics import f1_score, roc_auc_score, precision_recall_curve, auc
+from sklearn.metrics import f1_score, roc_auc_score, precision_recall_curve, auc, matthews_corrcoef
 import numpy as np
 def test(model, loader):
     model.eval()
@@ -20,19 +20,31 @@ def test(model, loader):
         for data in loader:
             data = data.to(config['device'])
             output = model.embed(data)
-            probs = F.softmax(output, dim=-1)[:, 1]  
+            
+            # Get predicted probabilities and predicted labels
+            probs = F.softmax(output, dim=-1)[:, 1]  # Probability of positive class
             preds = F.log_softmax(output, dim=-1).max(1)[1]
+            
+            # Collect predictions and true labels
             all_preds.extend(probs.cpu().numpy())
             all_labels.extend(data.y.cpu().numpy())
     
+    # Convert predictions and labels to numpy arrays
     all_preds = np.array(all_preds)
     all_labels = np.array(all_labels)
-    f1 = f1_score(all_labels, all_preds.round())  
-    roc_auc = roc_auc_score(all_labels, all_preds)
+    
+    # Calculate F1 Score
+    f1 = f1_score(all_labels, all_preds.round())  # Round probabilities to 0 or 1 for binary classification
+    
+    mcc = matthews_corrcoef(all_labels, all_preds.round())
+    # Calculate ROC-AUC
+    # roc_auc = roc_auc_score(all_labels, all_preds)
+    
+    # Calculate Precision-Recall AUC
     precision, recall, _ = precision_recall_curve(all_labels, all_preds)
     pr_auc = auc(recall, precision)
     
-    return f1, roc_auc, pr_auc
+    return f1, mcc, pr_auc
 
 def train(config,args):
     dset_loaders = {}
@@ -56,21 +68,23 @@ def train(config,args):
         optimizer.zero_grad()
         for inputs_train, inputs_test in zip(dset_loaders["train"], dset_loaders["test"]):
             inputs_train, inputs_test = inputs_train.to(config['device']), inputs_test.to(config['device'])
-            classifier_loss, label_loss, contrastive_loss = model(inputs_train, inputs_test, device=config['device'])
+            classifier_loss, label_loss, contrastive_loss = model(inputs_train, inputs_test, i, device=config['device'])
             total_loss = classifier_loss + args.label_loss * label_loss + args.contrastive_loss * contrastive_loss
+            # total_loss = args.label_loss * label_loss + args.contrastive_loss * contrastive_loss
             total_loss.backward()
             optimizer.step()
         val_f1, _, _ = test(model, dset_loaders["val"])
-        test_f1, test_auc, test_pr_auc = test(model, dset_loaders["test"])
+        test_f1, test_mcc, test_pr_auc = test(model, dset_loaders["test"])
         if best_val < val_f1:
             best_val = val_f1 
             best_model = model.state_dict()
-            best_data = [test_f1, test_auc, test_pr_auc]
+            best_data = [test_f1, test_mcc, test_pr_auc]
+            print(test_f1)
     return best_data
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Conditional Domain Adversarial Network')
-    parser.add_argument('--gpu_id', type=str, default='0', help="device id to run")
+    parser.add_argument('--gpu_id', type=str, default='1', help="device id to run")
     parser.add_argument('--batch_size', type=int, default=1024)
     parser.add_argument('--test_interval', type=int, default=5, help="interval of two continuous test phase")
     parser.add_argument('--random', type=bool, default=False, help="whether use random projection")
@@ -93,15 +107,33 @@ if __name__ == "__main__":
     parser.add_argument('--prediction_size', type=int, default=2)
     parser.add_argument('--projection_hidden_size', type=int, default=1024)
     parser.add_argument('--seed', type=int, default=3407)
+    parser.add_argument('--use_node_filter', action='store_true',
+                    help='whether to filter graphs by node count')
+    parser.add_argument('--min_nodes', type=int, default=0,
+                        help='minimum number of nodes in graph')
+    parser.add_argument('--max_nodes', type=int, default=0,
+                        help='maximum number of nodes in graph')
+
 
     args = parser.parse_args()
     print(args)
     config = {}
     # read data
     config['num_class'] = args.num_class = 2
-    with open('data/protein_data.pkl', 'rb') as f:
+    with open('protein_data.pkl', 'rb') as f:
         protein_data = pickle.load(f)
-    data_list = [convert_to_tudata(protein_name, protein_data) for protein_name, protein_data in protein_data.items()]
+    # data_list = [convert_to_tudata(protein_name, protein_data) for protein_name, protein_data in protein_data.items()]
+    data_list = []
+    for protein_name, protein_graph in protein_data.items():
+        data = convert_to_tudata(protein_name, protein_graph)
+        
+        # 节点数范围过滤
+        # if args.use_node_filter:
+        #     if data.num_nodes < args.min_nodes or data.num_nodes > args.max_nodes:
+        #         continue
+        
+        data_list.append(data)
+
     random.shuffle(data_list)
     total_length = len(data_list)
     train_size = int(total_length * 0.7)
@@ -137,7 +169,7 @@ if __name__ == "__main__":
         else:
             raise ValueError('Invalid GNN type') 
 
-        model = SGAC(gnnmodel, emb_dim=args.emb_dim, projection_size=args.projection_size,
+        model = DEAL(gnnmodel, emb_dim=args.emb_dim, projection_size=args.projection_size,
                         prediction_size=args.prediction_size, projection_hidden_size=args.projection_hidden_size)
         model.to(config['device'])
         config["gpu"] = args.gpu_id
@@ -155,5 +187,6 @@ if __name__ == "__main__":
         config["val_dataset"] = val_dataset
         acc = train(config,args)
         result[seed] = acc
+        print(acc)
     print(result)
                 
