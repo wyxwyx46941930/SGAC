@@ -2,6 +2,8 @@
 
 This project implements a novel **Spatial GNN-based AMP Classifier** (SGAC) designed to accurately distinguish between Antimicrobial Peptides (AMPs) and non-Antimicrobial Peptides (non-AMPs). The method leverages graph neural networks (GNNs) to incorporate the three-dimensional spatial structure of peptides, addressing limitations in traditional sequence-based classifiers and mitigating class imbalance through weight-enhanced contrastive learning and pseudo-label distillation.
 
+The paper has been accepted by **Briefings in Bioinformatics**, 2025.
+
 ## Setup Instructions
 
 Follow these steps to set up the environment, download the data, and run the code:
